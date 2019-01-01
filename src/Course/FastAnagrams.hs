@@ -14,13 +14,19 @@ fastAnagrams ::
   Chars
   -> FilePath
   -> IO (List Chars)
-fastAnagrams =
-  error "todo: Course.FastAnagrams#fastAnagrams"
+fastAnagrams word fp =
+  (\c -> fromSet $ S.intersection (toSet $ permutations word) (toSet $ lines c)) <$> readFile fp
+
+toSet :: List Chars -> S.Set NoCaseString
+toSet = S.fromList . hlist . (NoCaseString <$>)
+
+fromSet :: S.Set NoCaseString -> List Chars
+fromSet = (ncString <$>) . listh . S.toList
 
 newtype NoCaseString =
   NoCaseString {
     ncString :: Chars
-  }
+  } deriving Ord
 
 instance Eq NoCaseString where
   (==) = (==) `on` map toLower . ncString
