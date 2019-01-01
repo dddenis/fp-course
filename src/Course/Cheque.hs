@@ -220,6 +220,27 @@ data Digit3 =
   | D3 Digit Digit Digit
   deriving Eq
 
+showDigit3 :: Digit3 -> Chars
+showDigit3 (D1 d1) = showDigit d1
+showDigit3 (D2 Zero d1) = showDigit d1
+showDigit3 (D2 One Zero) = "ten"
+showDigit3 (D2 One One) = "eleven"
+showDigit3 (D2 One Two) = "twelve"
+showDigit3 (D2 One Three) = "thirteen"
+showDigit3 (D2 One Five) = "fifteen"
+showDigit3 (D2 One d1) = showDigit d1 ++ "teen"
+showDigit3 (D2 Two Zero) = "twenty"
+showDigit3 (D2 Three Zero) = "thirty"
+showDigit3 (D2 Four Zero) = "forty"
+showDigit3 (D2 Five Zero) = "fifty"
+showDigit3 (D2 Eight Zero) = "eighty"
+showDigit3 (D2 d2 Zero) = showDigit d2 ++ "ty"
+showDigit3 (D2 d2 d1) = showDigit3 (D2 d2 Zero) ++ "-" ++ showDigit d1
+showDigit3 (D3 Zero Zero Zero) = ""
+showDigit3 (D3 Zero d2 d1) = showDigit3 $ D2 d2 d1
+showDigit3 (D3 d3 Zero Zero) = showDigit d3 ++ " hundred"
+showDigit3 (D3 d3 d2 d1) = showDigit d3 ++ " hundred and " ++ (showDigit3 $ D2 d2 d1)
+
 -- Possibly convert a character to a digit.
 fromChar ::
   Char
@@ -323,5 +344,45 @@ fromChar _ =
 dollars ::
   Chars
   -> Chars
-dollars =
-  error "todo: Course.Cheque#dollars"
+dollars input =
+  f ds ++ " dollar" ++ (possiblePlural ds) ++
+  " and " ++ (f cs) ++ " cent" ++ (possiblePlural cs)
+  where
+    (ds, cs) = parseInput input
+    f = stringifyDigit3s . groupBy3
+
+parseCents :: List Digit -> List Digit
+parseCents (c1 :. Nil) = c1 :. Zero :. Nil
+parseCents cs = take 2 cs
+
+parseInput :: Chars -> (List Digit, List Digit)
+parseInput input = (f ds, parseCents $ f cs)
+  where
+    (ds, cs) = break (== '.') input
+    f chars = let digits = listOptional fromChar chars
+              in if isEmpty digits
+                 then Zero :. Nil
+                 else digits
+
+possiblePlural :: List Digit -> Chars
+possiblePlural xs = case reverse xs of
+                      (One :. _) -> ""
+                      _ -> "s"
+
+groupBy3 :: List Digit -> List Digit3
+groupBy3 = unfoldr f . reverse
+  where
+    f Nil = Empty
+    f (d1 :. Nil) = Full (D1 d1, Nil)
+    f (d1 :. d2 :. Nil) = Full (D2 d2 d1, Nil)
+    f (d1 :. d2 :. d3 :. ds) = Full (D3 d3 d2 d1, ds)
+
+stringifyDigit3s :: List Digit3 -> Chars
+stringifyDigit3s = foldRight f Nil . reverse . zipWith zipper illion
+  where
+    f x xs = if isEmpty x then xs else x ++ postfix xs
+    postfix xs = if isEmpty xs then Nil else " " ++ xs :: Chars
+    zipper = (\i d3 -> let dstr = showDigit3 d3
+                       in if isEmpty dstr
+                          then ""
+                          else dstr ++ postfix i)
